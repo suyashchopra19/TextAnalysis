@@ -1,0 +1,116 @@
+---
+title: "BA HW 8"
+author: "Suyash Chopra"
+date: "12/5/2017"
+output:
+  word_document: default
+  html_document: default
+---
+
+
+```{r}
+library(readr)
+precorpus<-read_csv("Desktop/precorpus.csv")
+
+library(quanteda)
+```
+
+
+```{r}
+news_corpus= corpus(precorpus$Full.text, docnames=precorpus$SpeechID) 
+summary(news_corpus)
+```
+
+```{r}
+news_corpus = char_tolower(news_corpus$documents$texts, keep_acronyms = FALSE)
+#Corpus consists of 3 documents
+#Types-same words,Tokens-No of words
+```
+
+
+```{r}
+library(tm)
+clean_corpus=tokens(news_corpus,removeNumbers=TRUE, remove_punct= TRUE, removeSeparators=TRUE,
+                    removeTwitter=FALSE,verbose=TRUE)
+dfm.simple= dfm(clean_corpus, toLower = TRUE, remove = stopwords("english"), verbose=TRUE, stem=FALSE)
+```
+
+
+```{r}
+head(dfm.simple)
+```
+
+```{r}
+topfeatures<-topfeatures(dfm.simple, n=100);
+topfeatures
+```
+
+```{r}
+swlist = c("can", "also", "one" ,"just" ,"get","the","we","of","and") 
+dfm.stem<- dfm(clean_corpus, toLower = TRUE, remove = c(swlist, stopwords("english")), verbose=TRUE, stem=TRUE)
+topfeatures.stem<-topfeatures(dfm.stem, n=100);topfeatures.stem
+```
+
+```{r}
+#Sentiment Analysis 
+mydict <- dictionary(list(negative = c("detriment*", "bad*", "awful*", "terri
+b*", "horribl*","stop*","border*","tax*","never*"), postive = c("good", "great", "super*", "excellent", "yay","love","free*","hope","faith","job","people","will","nation"))) 
+dfm.sentiment <- dfm(clean_corpus, dictionary = mydict) 
+topfeatures(dfm.sentiment)
+(dfm.sentiment)
+```
+
+```{r}
+#Complete a word correlational analysis 
+library(wordcloud)
+set.seed(111) #keeps cloud'shapefixed 
+dark2 <- brewer.pal(8,"Set1") 
+freq<-topfeatures(dfm.stem, n=100) 
+wordcloud(names(freq), freq, max.words=100, scale=c(3, .1), colors=brewer.pal(8, "Set1"))
+```
+
+```{r}
+#specifying a correlation limit of 0.9 library(tm) 
+dfm.tm<-convert(dfm.stem, to="tm") 
+findAssocs(dfm.tm, c("america", "nation", "great"), corlimit=.99)
+#corlimit gives corr of 0.99 and above
+```
+
+```{r}
+#Bonus
+#What are the common topics in the corpus
+#Topic Modeling
+library(stm) #Process the data for analysis.
+temp<-textProcessor(documents=precorpus$Full.text, metadata = precorpus) 
+names(temp) 
+# produces: "documents", "vocab", "meta", "docs.removed" 
+meta<-temp$meta
+vocab<-temp$vocab
+docs<-temp$documents 
+out <- prepDocuments(docs, vocab, meta)
+docs<-out$documents 
+vocab<-out$vocab
+meta <-out$meta
+```
+
+
+```{r}
+#running stm for top 10 topics help("stm") 
+prevfit <-stm(docs , vocab , K=10, verbose=TRUE, data=meta, max.em.its=100) 
+topics <-labelTopics(prevfit , topics=c(1:10))
+print(topics) 
+```
+
+```{r}
+# findThoughts(prevfit, texts = precorpus$Full.text, topics = 10, n = 2)
+
+plot.STM(prevfit, type="summary") 
+plot.STM(prevfit, type="labels", topics=c(5,7,8)) 
+plot.STM(prevfit, type="perspectives", topics = c(9,10))
+# to aid on assigment of labels & intepretation of topics 
+
+mod.out.corr <- topicCorr(prevfit) 
+#Estimates a graph of topic correlations 
+library(igraph)
+plot(mod.out.corr)
+```
